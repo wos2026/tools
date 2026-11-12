@@ -43,7 +43,7 @@ ol#roster{list-style:none;margin:10px 0 0;padding:0;max-height:52vh;overflow:aut
 #roster li .hd{cursor:grab;color:#9aa5b1;padding:0 2px}
 #roster li input{flex:1;min-width:0;padding:4px 6px}
 #roster li select{padding:4px 2px;font-size:12px}
-#roster li .seat{font-size:11px;width:56px;text-align:center;color:var(--muted)}
+#roster li .seat{font-size:11px;width:62px;text-align:center;color:var(--muted)}
 #roster li .seat.ok{color:var(--navy);font-weight:700}
 #roster li .mini{border:none;background:none;cursor:pointer;color:#8592a0;font-size:13px;padding:2px 3px}
 .sw{display:inline-block;width:20px;height:20px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px #c9d2db;cursor:pointer;padding:0}
@@ -152,6 +152,15 @@ for(let a=0;a<N;a++)for(let b=0;b<N;b++){
   tiles.push({k:a+'-'+b,a,b,d:a-b,s:a+b,sec:secOf(a,b),dir:dirOf(a,b),ring:Math.max(da,db)});
 }
 const TM=Object.fromEntries(tiles.map(t=>[t.k,t]));
+// 席順番号：太陽城に近い列から、北の角の右隣を1番として時計回り（各列の最後は北の角）
+(function(){let n=1;
+  for(let r=1;r<=C0;r++){const lo=C0-r,hi=C1+r,seq=[];
+    for(let a=lo+1;a<hi;a++)seq.push([a,lo]);seq.push([hi,lo]);
+    for(let b=lo+1;b<hi;b++)seq.push([hi,b]);seq.push([hi,hi]);
+    for(let a=hi-1;a>lo;a--)seq.push([a,hi]);seq.push([lo,hi]);
+    for(let b=hi-1;b>lo;b--)seq.push([lo,b]);seq.push([lo,lo]);
+    seq.forEach(([a,b])=>{const t=TM[a+'-'+b];if(t)t.no=n++;});}
+})();
 
 // ---- state ----
 const KEY='knt-oujou-seat-v1';
@@ -203,10 +212,15 @@ function buildSvg(exp){
     g+=`<g class="${on?'tile':'off'}" data-k="${t.k}"><polygon points="${poly}" fill="${fill}" stroke="${isArm||isSel?'#f2b705':'#5b6670'}" stroke-width="${isArm||isSel?3.5:0.8}" opacity="${on?1:.55}"/>`;
     if(p&&on){
       g+=`<title>${esc(p.name)}${AL(p.al).name?'（'+esc(AL(p.al).name)+'）':''}${t.sec!=null?t.sec+'秒':''}</title>`;
-      const nf=nameFit(p.name,68);
-      g+=`<text x="${cx}" y="${cy+nf.size*0.36}" text-anchor="middle" font-size="${nf.size}" font-weight="700" fill="#fff">${esc(nf.t)}</text>`;
-    }else if(t.sec!=null){
-      g+=`<text x="${cx}" y="${cy+4.5}" text-anchor="middle" font-size="12" font-weight="700" fill="${on?'#3d4852':'#9aa3ad'}">${t.sec}</text>`;
+      const nf=nameFit(p.name,62);
+      g+=`<text x="${cx}" y="${cy-8}" text-anchor="middle" font-size="9.5" font-weight="700" fill="#fff" opacity=".85">${t.no}</text>`;
+      g+=`<text x="${cx}" y="${cy+6+nf.size*0.36}" text-anchor="middle" font-size="${nf.size}" font-weight="700" fill="#fff">${esc(nf.t)}</text>`;
+    }else{
+      const c=on?'#1d3557':'#9aa3ad';
+      if(t.sec!=null){
+        g+=`<text x="${cx}" y="${cy+1}" text-anchor="middle" font-size="12.5" font-weight="700" fill="${c}">${t.no}</text>`;
+        g+=`<text x="${cx}" y="${cy+14}" text-anchor="middle" font-size="9" fill="${on?'#5b6670':'#a8b0b8'}">${t.sec}秒</text>`;
+      }else g+=`<text x="${cx}" y="${cy+4.5}" text-anchor="middle" font-size="12.5" font-weight="700" fill="${c}">${t.no}</text>`;
     }
     g+='</g>';
   }
@@ -275,11 +289,11 @@ function render(){
 function renderAlliances(){
   document.getElementById('alliances').innerHTML=st.alliances.map(a=>{const cnt=st.players.filter(p=>p.al===a.id).length;
     return `<div class="al" data-al="${a.id}"><input value="${esc(a.name)}" data-f="alname" placeholder="同盟名"><span>${PALETTE.map(c=>`<button class="sw${c===a.color?' on':''}" style="background:${c}" data-c="${c}" title="この色にする"></button>`).join(' ')}</span><span class="muted">${cnt}人</span>${st.alliances.length>1?'<button class="b w" data-a="delal" style="padding:2px 7px">✕</button>':''}</div>`;}).join('');
-  document.getElementById('legend').innerHTML=st.alliances.map(a=>`<span><i style="background:${a.color}"></i>${esc(a.name)}</span>`).join('')+'<span>数字＝太陽城までの着弾秒数（ペットバフ無し、参考秒数）</span>';
+  document.getElementById('legend').innerHTML=st.alliances.map(a=>`<span><i style="background:${a.color}"></i>${esc(a.name)}</span>`).join('')+'<span>大きい数字＝席順番号／小さい数字＝太陽城までの着弾秒数（ペットバフ無し、参考秒数）</span>';
   if(!st.alliances.some(a=>a.id===bulkAl))bulkAl=st.alliances[0].id;
   document.getElementById('bulkAl').innerHTML=st.alliances.map(a=>`<option value="${a.id}"${a.id===bulkAl?' selected':''}>${esc(a.name||'―')}</option>`).join('');
 }
-function seatLabel(pid){const k=tileOf(pid);if(!k)return null;const t=TM[k];return t.dir+(t.sec!=null?' '+t.sec+'秒':'');}
+function seatLabel(pid){const k=tileOf(pid);if(!k)return null;const t=TM[k];return t.no+'番 '+t.dir;}
 function renderRoster(){
   roster.innerHTML=st.players.map((p,i)=>{const sl=seatLabel(p.id);
     return `<li data-id="${p.id}" class="${armed===p.id?'armed':''}"><span class="hd" draggable="true" title="ドラッグしてマップへ">⠿</span><span class="no">${i+1}</span>
@@ -299,7 +313,7 @@ function renderCtx(){
   }
   if(selTile){
     const t=TM[selTile], un=st.players.filter(p=>!tileOf(p.id));
-    ctx.innerHTML=head+`<div class="big">${t.dir}　${t.sec!=null?t.sec+'秒':'秒数データなし'} のタイル</div>
+    ctx.innerHTML=head+`<div class="big">${t.no}番（${t.dir}・${t.sec!=null?t.sec+'秒':'秒数データなし'}）のタイル</div>
     ${un.length?'<div>未配置メンバーから選ぶ：</div><div class="chips">'+un.map(p=>`<button class="chip" style="background:${AL(p.al).color}" data-pick="${p.id}">${esc(p.name)}</button>`).join('')+'</div>':''}
     <div style="margin-top:8px">新しい人を直接入れる：</div>
     <div class="row"><input id="qName" placeholder="名前"><select id="qAl">${st.alliances.map(a=>`<option value="${a.id}"${a.id===bulkAl?' selected':''}>${esc(a.name||'―')}</option>`).join('')}</select><button class="b p" id="qAdd">入れる</button></div>
@@ -379,9 +393,9 @@ modal.addEventListener('click',e=>{if(e.target===modal||e.target.id==='mClose')m
 function confirmBox(msg,fn){openModal(`<p>${esc(msg)}</p><div class="acts"><button class="b w" id="mOk">はい</button></div>`);document.getElementById('mOk').onclick=()=>{modal.hidden=true;fn();};}
 function seatText(){
   const S=seats(),rows=Object.keys(S).filter(k=>active(TM[k])&&P(S[k])).map(k=>({t:TM[k],p:P(S[k])}));
-  rows.sort((x,y)=>(x.t.sec??999)-(y.t.sec??999)||DIRS.indexOf(x.t.dir)-DIRS.indexOf(y.t.dir));
+  rows.sort((x,y)=>x.t.no-y.t.no);
   let s=`【王城戦席順】${MODE_LABEL[st.mode]}\n`;
-  rows.forEach(r=>{s+=`${r.t.sec!=null?r.t.sec+'秒':'―'}　${r.t.dir}　${r.p.name}${st.alliances.length>1&&AL(r.p.al).name?'［'+AL(r.p.al).name+'］':''}\n`;});
+  rows.forEach(r=>{s+=`${r.t.no}番　${r.p.name}${st.alliances.length>1&&AL(r.p.al).name?'［'+AL(r.p.al).name+'］':''}\n`;});
   const un=st.players.filter(p=>!tileOf(p.id));if(un.length)s+=`未配置：${un.map(p=>p.name).join('、')}\n`;
   return s;}
 document.getElementById('copyText').addEventListener('click',async()=>{
