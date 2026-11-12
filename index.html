@@ -5,20 +5,49 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ホワサバ ツール</title>
 <style>
+:root{--navy:#1d3557;--blue:#457b9d;--line:#d5dde6;--muted:#6b7785}
+*{box-sizing:border-box}
 body{margin:0;font-family:"Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif;background:#f4f7fa;color:#1f2933}
-header{background:#1d3557;color:#fff;padding:14px 18px}
-header h1{margin:0;font-size:19px}
-main{max-width:720px;margin:18px auto;padding:0 14px}
-a.card{display:block;background:#fff;border:1px solid #d5dde6;border-left:5px solid #1d3557;border-radius:12px;padding:14px 16px;text-decoration:none;color:inherit;margin-bottom:12px}
-a.card:hover{border-color:#457b9d}
-a.card b{color:#1d3557;font-size:16px}
-a.card span{display:block;font-size:13px;color:#6b7785;margin-top:4px}
+header{background:var(--navy);color:#fff;padding:22px 18px 18px}
+header .in{max-width:880px;margin:0 auto}
+header h1{margin:0;font-size:22px;letter-spacing:.05em}
+header p{margin:6px 0 0;font-size:13px;opacity:.8}
+main{max-width:880px;margin:0 auto;padding:8px 14px 30px}
+h2{font-size:15px;color:var(--navy);margin:22px 0 10px;padding-left:10px;border-left:4px solid var(--navy)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+a.card{display:block;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;text-decoration:none;color:inherit;transition:border-color .15s,box-shadow .15s}
+a.card:hover{border-color:var(--blue);box-shadow:0 2px 10px rgba(29,53,87,.08)}
+a.card b{display:block;color:var(--navy);font-size:15.5px}
+a.card .tag{display:inline-block;font-size:11px;color:#fff;background:var(--blue);border-radius:10px;padding:1px 8px;margin-top:6px}
+a.card span.d{display:block;font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.6}
+footer{text-align:center;font-size:11px;color:var(--muted);padding:10px 0 24px}
 </style>
 </head>
 <body>
-<header><h1>ホワサバ ツール</h1></header>
+<header><div class="in"><h1>ホワサバ ツール</h1><p>Whiteout Survival（ホワサバ）で使えるツールと各同盟向けページのまとめです。</p></div></header>
 <main>
-  <a class="card" href="oujou-seat/"><b>王城戦席順ボード</b><span>太陽城まわりのタイルに、同盟ごとの色で席順を配置。国内王城戦・SVS（左側／右側）対応、画像ダウンロード可。</span></a>
+  <h2>共通ツール</h2>
+  <div class="grid">
+    <a class="card" href="oujou-seat/"><b>王城戦席順ボード</b><span class="d">太陽城まわりのタイルに、同盟ごとの色で席順を配置。国内王城戦・SVS（左側／右側）対応、画像ダウンロード可。</span></a>
+  </div>
+
+  <h2>拠点タイマー</h2>
+  <div class="grid">
+    <a class="card" href="https://wos2026.github.io/knt/gal/"><b>GaL 拠点タイマー</b><span class="tag">GaL</span><span class="d">拠点争奪の保護時間トラッカー。</span></a>
+  </div>
+
+  <h2>作戦・配置</h2>
+  <div class="grid">
+    <a class="card" href="https://wos2026.github.io/knt/svs/"><b>T9M SVS作戦</b><span class="tag">T9M</span><span class="d">SVSの作戦ページ。</span></a>
+    <a class="card" href="https://wos2026.github.io/knt/rinpu-t9m/"><b>凛風攻城戦 駐屯配置シート</b><span class="tag">T9M 九十九束</span><span class="d">凛風攻城戦の拠点ごとの駐屯配置。</span></a>
+  </div>
+
+  <h2>アンケート</h2>
+  <div class="grid">
+    <a class="card" href="https://wos2026.github.io/knt/survey-4148/"><b>4148王国 兵器工場アンケート</b><span class="tag">4148</span><span class="d">兵器工場の出欠と英雄育成アンケート。</span></a>
+    <a class="card" href="https://wos2026.github.io/knt/survey/"><b>4575サーバー SVS参加者アンケート</b><span class="tag">4575</span><span class="d">SVSに向けた英雄育成アンケート。</span></a>
+  </div>
 </main>
+<footer>ホワサバ ツール</footer>
 </body>
 </html>
