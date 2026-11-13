@@ -74,7 +74,7 @@ footer{text-align:center;font-size:11px;color:var(--muted);padding:6px 0 18px}
 <li><b>モードを選ぶ</b>：国内王城戦はレッドゾーン全部、SVSは「左側」「右側」のどちらかを使います（使わない側はグレー）。配置はモードごとに別々に保存されます。</li>
 <li><b>同盟と色を決める</b>：「同盟とカラー」に同盟名を入れ、8色から色を選びます。「＋ 同盟を追加」で同盟を増やせます。</li>
 <li><b>メンバーを入れる</b>：1行に1人ずつ入力して「メンバー追加」。名前の後ろに同盟名を書くとその同盟に入ります（例：たろう GaL）。順番は ▲▼ で入れ替えできます。</li>
-<li><b>自動配置</b>：メンバーの上から順に、太陽城に早く着くタイルから自動で並べます。「未配置だけ追加」は空いているタイルに追加だけします。</li>
+<li><b>自動配置</b>：メンバーの上から順（強い人順）に自動で並べます。並べ方は「早く着く順」か「矢印順（SVS用）」を選べます。矢印順は、北西面を内側の列から北→西へ → 西の角を太陽城に近い縦列から上→下へ → 南西面を内側の列から南→西へ、の順に埋めます（右側は左右反転）。「未配置だけ追加」は空いているタイルに追加だけします。</li>
 <li><b>手で調整</b>：メンバー（またはマップ上の人）をタップ → 移動先のタイルをタップ。人がいるタイルなら入れ替わります。空きタイルをタップすると、その場で名前を入れられます。</li>
 <li><b>共有する</b>：「画像をダウンロード」で席順画像を保存、「席順をテキストでコピー」でチャットやLINEに貼れます。</li>
 </ol><div class="muted">※タイルの数字は席順番号です。入力内容はこの端末のブラウザに自動保存されます。</div></details></div>
@@ -101,7 +101,8 @@ footer{text-align:center;font-size:11px;color:var(--muted);padding:6px 0 18px}
       <textarea id="bulk" placeholder="1行に1人。名前の後ろに同盟名を書くとその同盟に入ります&#10;例）&#10;たろう&#10;はなこ KNT&#10;じろう ABC"></textarea>
       <div class="acts"><span class="muted" style="align-self:center">同盟の指定がない人は</span><select id="bulkAl"></select><button class="b p" id="addBulk">メンバー追加</button></div>
       <div class="acts">
-        <button class="b" id="auto" title="メンバーの上から順に、速いタイルへ並べ直します">自動配置（やり直し）</button>
+        <select id="autoOrder" title="自動配置の並べ方"><option value="fast">早く着く順</option><option value="arrow">矢印順（SVS用）</option></select>
+        <button class="b" id="auto" title="メンバーの上から順に並べ直します">自動配置（やり直し）</button>
         <button class="b" id="autoFill" title="未配置の人だけ、空いている速いタイルへ">未配置だけ追加</button>
         <button class="b w" id="clearSeats">配置クリア</button>
       </div>
@@ -269,7 +270,30 @@ function assign(pid,k){
   if(other&&other!==pid){ if(cur)S[cur]=other; }
   S[k]=pid;
 }
+// 矢印順（SVS用）：内側の列から、面ごとに矢印の向きで埋める
+// 左側：北西面（北端→西の角へ）→ 西の角（太陽城に近い縦列から、各列は上→下）→ 南西面（南端→西の角へ）
+// 右側：左右反転（北東面 → 東の角 → 南東面）
+function arrowTiles(side){
+  const seq=[],push=(a,b)=>{const t=TM[a+'-'+b];if(t&&active(t))seq.push(t);};
+  if(side==='left'){
+    for(let a=C0-1;a>=0;a--)for(let b=C0;b<=C1;b++)push(a,b);
+    for(let d=(C0-1)-(C1+1);d>=-(N-1);d--)for(let a=0;a<C0;a++){const b=a-d;if(b>C1&&b<N)push(a,b);}
+    for(let b=C1+1;b<N;b++)for(let a=C1;a>=C0;a--)push(a,b);
+  }else{
+    for(let b=C0-1;b>=0;b--)for(let a=C0;a<=C1;a++)push(a,b);
+    for(let d=(C1+1)-(C0-1);d<=N-1;d++)for(let b=0;b<C0;b++){const a=b+d;if(a>C1&&a<N)push(a,b);}
+    for(let a=C1+1;a<N;a++)for(let b=C1;b>=C0;b--)push(a,b);
+  }
+  return seq;
+}
 function orderedTiles(){
+  if(st.autoOrder==='arrow'&&st.mode!=='all'){
+    const seq=arrowTiles(st.mode),inS=new Set(seq);
+    return seq.concat(fastTiles().filter(t=>!inS.has(t)));
+  }
+  return fastTiles();
+}
+function fastTiles(){
   const act=tiles.filter(active);
   const known=act.filter(t=>t.sec!=null), unk=act.filter(t=>t.sec==null);
   const groups={};known.forEach(t=>(groups[t.sec]=groups[t.sec]||[]).push(t));
@@ -303,6 +327,7 @@ function render(){
   document.querySelectorAll('.modes button').forEach(b=>b.classList.toggle('on',b.dataset.mode===st.mode));
   document.getElementById('centerWrap').style.display=st.mode==='all'?'none':'';
   document.getElementById('center').checked=st.center;
+  document.getElementById('autoOrder').value=st.autoOrder||'fast';
   renderAlliances();renderRoster();renderCtx();
 }
 function renderAlliances(){
@@ -323,7 +348,7 @@ function renderRoster(){
 }
 function renderCtx(){
   const S=seats(), placed=st.players.filter(p=>tileOf(p.id)).length, nAct=tiles.filter(active).length;
-  const head=`<div class="muted">${MODE_LABEL[st.mode]}　配置 ${placed}/${st.players.length}人・使えるタイル ${nAct}</div>`;
+  const head=(st.autoOrder==='arrow'&&st.mode==='all'?'<div class="muted" style="color:#b42318">※矢印順はSVS（左側・右側）用です。国内王城戦では早く着く順で並べます。</div>':'')+`<div class="muted">${MODE_LABEL[st.mode]}　配置 ${placed}/${st.players.length}人・使えるタイル ${nAct}</div>`;
   if(armed&&P(armed)){
     const p=P(armed), sl=seatLabel(armed);
     ctx.innerHTML=head+`<div class="big">「${esc(p.name)}」を選択中</div>置きたいタイルをタップしてください。${sl?'（今：'+sl+'）人がいるタイルを選ぶと入れ替えます。':''}
@@ -400,6 +425,7 @@ document.getElementById('center').addEventListener('change',e=>{st.center=e.targ
 document.getElementById('addBulk').addEventListener('click',()=>{
   const ta=document.getElementById('bulk');ta.value.split(/\n/).map(s=>s.trim()).filter(Boolean).forEach(l=>{const r=parseLine(l);if(r.name)addPlayer(r.name,r.al);});
   ta.value='';save();render();});
+document.getElementById('autoOrder').addEventListener('change',e=>{st.autoOrder=e.target.value;save();renderCtx();});
 document.getElementById('auto').addEventListener('click',()=>autoPlace(false));
 document.getElementById('autoFill').addEventListener('click',()=>autoPlace(true));
 document.getElementById('clearSeats').addEventListener('click',()=>confirmBox(`${MODE_LABEL[st.mode]} の配置をすべて外しますか？（メンバーは残ります）`,()=>{st.seats[st.mode]={};armed=null;selTile=null;save();render();}));
