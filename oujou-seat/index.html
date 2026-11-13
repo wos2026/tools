@@ -395,6 +395,7 @@ function renderCtx(){
   if(armed&&P(armed)){
     const p=P(armed), sl=seatLabel(armed);
     ctx.innerHTML=head+`<div class="big">「${esc(p.name)}」を選択中</div>置きたいタイルをタップしてください。${sl?'（今：'+sl+'）人がいるタイルを選ぶと入れ替えます。':''}
+    <div class="row"><input id="renName" value="${esc(p.name)}" placeholder="名前"><select id="renAl">${st.alliances.map(a=>`<option value="${a.id}"${a.id===p.al?' selected':''}>${esc(a.name||'―')}</option>`).join('')}</select><button class="b p" id="renSave">名前を変更</button></div>
     <div class="acts">${sl?'<button class="b" id="unseat">タイルから外す</button>':''}<button class="b" id="disarm">選択解除</button></div>`;
     return;
   }
@@ -445,12 +446,15 @@ roster.addEventListener('change',e=>{
 ctx.addEventListener('click',e=>{
   const id=e.target.id;
   if(id==='disarm'){armed=null;render();}
+  if(id==='renSave')renameArmed();
   if(id==='unseat'){const k=tileOf(armed);if(k)delete seats()[k];armed=null;save();render();}
   if(id==='desel'){selTile=null;render();}
   if(e.target.dataset.pick){assign(e.target.dataset.pick,selTile);selTile=null;save();render();}
   if(id==='qAdd')quickAdd();
 });
-ctx.addEventListener('keydown',e=>{if(e.target.id==='qName'&&e.key==='Enter'&&!e.isComposing)quickAdd();});
+ctx.addEventListener('keydown',e=>{if(e.key!=='Enter'||e.isComposing)return;if(e.target.id==='qName')quickAdd();if(e.target.id==='renName')renameArmed();});
+ctx.addEventListener('change',e=>{if(e.target.id==='renAl'&&armed&&P(armed)){P(armed).al=e.target.value;save();render();}});
+function renameArmed(){const p=armed&&P(armed);if(!p)return;const v=document.getElementById('renName').value.trim();if(!v)return;p.name=v;armed=null;save();render();}
 function quickAdd(){const n=document.getElementById('qName').value.trim();if(!n||!selTile)return;
   const p=addPlayer(n,document.getElementById('qAl').value);seats()[selTile]=p.id;selTile=null;save();render();}
 const alBox=document.getElementById('alliances');
