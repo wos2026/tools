@@ -283,7 +283,6 @@ function buildSvg(exp){
     g+=`<text x="${PAD}" y="${PAD+18}" font-size="22" font-weight="700" fill="#1d3557">王城戦席順</text>`;
     g+=`<text x="${PAD}" y="${PAD+44}" font-size="15" fill="#1d3557">${MODE_LABEL[st.mode]}</text>`;
     const n=st.alliances.length;let ly=VH-PAD-18*n+6;st.alliances.forEach((a,i)=>{g+=`<rect x="${PAD}" y="${ly+i*18-11}" width="13" height="13" rx="3" fill="${a.color}"/><text x="${PAD+19}" y="${ly+i*18}" font-size="13" fill="#333">${esc(a.name)}</text>`;});
-    g+=`<text x="${VW-PAD}" y="${VH-PAD}" text-anchor="end" font-size="12" fill="#888">製作者「FURUKANA」</text>`;
   }
   return g;
 }
