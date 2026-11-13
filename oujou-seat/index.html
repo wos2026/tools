@@ -74,7 +74,7 @@ footer{text-align:center;font-size:11px;color:var(--muted);padding:6px 0 18px}
 <li><b>モードを選ぶ</b>：国内王城戦はレッドゾーン全部、SVSは「左側」「右側」のどちらかを使います（使わない側はグレー）。配置はモードごとに別々に保存されます。</li>
 <li><b>同盟と色を決める</b>：「同盟とカラー」に同盟名を入れ、8色から色を選びます。「＋ 同盟を追加」で同盟を増やせます。</li>
 <li><b>メンバーを入れる</b>：1行に1人ずつ入力して「メンバー追加」。名前の後ろに同盟名を書くとその同盟に入ります（例：たろう GaL）。順番は ▲▼ で入れ替えできます。</li>
-<li><b>自動配置</b>：メンバーの上から順（強い人順）に自動で並べます。並べ方は「早く着く順」か「矢印順（SVS用）」を選べます。矢印順は、北西面を内側の列から北→西へ → 西の角を太陽城に近い縦列から上→下へ → 南西面を内側の列から南→西へ、の順に埋めます（右側は左右反転）。「未配置だけ追加」は空いているタイルに追加だけします。</li>
+<li><b>自動配置</b>：メンバーの上から順（強い人順）に自動で並べます。並べ方は「早く着く順」か「矢印順（SVS用）」を選べます。国内王城戦で「ブロック割り当て」をすると、同盟ごとに自分のブロックへ並べ、入りきらない人は角の自由席へ入れます。矢印順は、北西面を内側の列から北→西へ → 西の角を太陽城に近い縦列から上→下へ → 南西面を内側の列から南→西へ、の順に埋めます（右側は左右反転）。「未配置だけ追加」は空いているタイルに追加だけします。</li>
 <li><b>手で調整</b>：メンバー（またはマップ上の人）をタップ → 移動先のタイルをタップ。人がいるタイルなら入れ替わります。空きタイルをタップすると、その場で名前を入れられます。</li>
 <li><b>共有する</b>：「画像をダウンロード」で席順画像を保存、「席順をテキストでコピー」でチャットやLINEに貼れます。</li>
 </ol><div class="muted">※タイルの数字は席順番号です。入力内容はこの端末のブラウザに自動保存されます。</div></details></div>
@@ -95,6 +95,11 @@ footer{text-align:center;font-size:11px;color:var(--muted);padding:6px 0 18px}
       <h2>同盟とカラー</h2>
       <div id="alliances"></div>
       <div class="acts"><button class="b" id="addAl">＋ 同盟を追加</button></div>
+    </div>
+    <div class="card" id="blockCard">
+      <h2>国内王城戦のブロック割り当て</h2>
+      <p class="muted" style="margin:0 0 6px">各面を半分に分けた8ブロック（各12席）に同盟を割り当てると、一括配置で同盟ごとに自分のブロックへ並べます。角の灰色部分は自由席です。</p>
+      <div id="blocks"></div>
     </div>
     <div class="card">
       <h2>メンバー（上から強い順）</h2>
@@ -153,6 +158,17 @@ for(let a=0;a<N;a++)for(let b=0;b<N;b++){
   tiles.push({k:a+'-'+b,a,b,d:a-b,s:a+b,sec:secOf(a,b),dir:dirOf(a,b),ring:Math.max(da,db)});
 }
 const TM=Object.fromEntries(tiles.map(t=>[t.k,t]));
+// 国内王城戦のカラーブロック（各面を半分に分けた8ブロック・各12席。角の4×4は自由席）
+const BLOCKS=[
+ {id:'ne-n',label:'北東面・北寄り',test:(a,b)=>b<C0&&a>=C0&&a<=C0+2},
+ {id:'ne-e',label:'北東面・東寄り',test:(a,b)=>b<C0&&a>=C0+3&&a<=C1},
+ {id:'se-e',label:'南東面・東寄り',test:(a,b)=>a>C1&&b>=C0&&b<=C0+2},
+ {id:'se-s',label:'南東面・南寄り',test:(a,b)=>a>C1&&b>=C0+3&&b<=C1},
+ {id:'sw-s',label:'南西面・南寄り',test:(a,b)=>b>C1&&a>=C0+3&&a<=C1},
+ {id:'sw-w',label:'南西面・西寄り',test:(a,b)=>b>C1&&a>=C0&&a<=C0+2},
+ {id:'nw-w',label:'北西面・西寄り',test:(a,b)=>a<C0&&b>=C0+3&&b<=C1},
+ {id:'nw-n',label:'北西面・北寄り',test:(a,b)=>a<C0&&b>=C0&&b<=C0+2}];
+tiles.forEach(t=>{const bl=BLOCKS.find(x=>x.test(t.a,t.b));t.block=bl?bl.id:null;});
 // 席順番号：太陽城に近い列から、北の角の右隣を1番として時計回り（各列の最後は北の角）
 (function(){let n=1;
   for(let r=1;r<=C0;r++){const lo=C0-r,hi=C1+r,seq=[];
@@ -165,10 +181,12 @@ const TM=Object.fromEntries(tiles.map(t=>[t.k,t]));
 
 // ---- state ----
 const KEY='knt-oujou-seat-v1';
-let st={mode:'all',center:true,players:[],seats:{all:{},left:{},right:{}},nid:1,alliances:[{id:'a1',name:'',color:PALETTE[5]}]};
+let st={mode:'all',center:true,players:[],seats:{all:{},left:{},right:{}},nid:1,alliances:[{id:'a1',name:'',color:PALETTE[5]}],blocks:{}};
 try{const raw=localStorage.getItem(KEY);if(raw){const o=JSON.parse(raw);if(o&&o.players)st=Object.assign(st,o);}}catch(e){}
 function fixState(){
   if(!Array.isArray(st.alliances)||!st.alliances.length)st.alliances=[{id:'a1',name:'',color:PALETTE[5]}];
+  if(!st.blocks||typeof st.blocks!=='object')st.blocks={};
+  for(const k in st.blocks)if(!st.alliances.some(a=>a.id===st.blocks[k]))delete st.blocks[k];
   const seen=new Set();st.alliances.forEach((x,i)=>{if(seen.has(x.id))x.id='al'+i+Math.random().toString(36).slice(2,6);seen.add(x.id);});
   st.players.forEach(p=>{delete p.role;if(!st.alliances.some(a=>a.id===p.al))p.al=st.alliances[0].id;});
 }
@@ -231,6 +249,7 @@ function buildSvg(exp){
     const poly=[pt(t.a,t.b),pt(t.a+1,t.b),pt(t.a+1,t.b+1),pt(t.a,t.b+1)].join(' ');
     const cx=vx(t.a+.5,t.b+.5), cy=vy(t.a+.5,t.b+.5);
     let fill=on?heat(t.sec):'#e4e7eb';
+    if(on&&st.mode==='all'&&useBlocks()){const ba=blockAl(t);if(ba)fill=mixW(AL(ba).color,.3);else fill=t.block?'#ffffff':'#d9dce1';}
     if(p&&on)fill=AL(p.al).color;
     const isArm=!exp&&p&&armed===pid, isSel=!exp&&selTile===t.k;
     g+=`<g class="${on?'tile':'off'}" data-k="${t.k}"><polygon points="${poly}" fill="${fill}" stroke="${isArm||isSel?'#f2b705':'#5b6670'}" stroke-width="${isArm||isSel?3.5:0.8}" opacity="${on?1:.55}"/>`;
@@ -306,12 +325,31 @@ function fastTiles(){
   unk.sort((x,y)=>x.ring-y.ring||Math.abs(x.d)-Math.abs(y.d));
   return out.concat(unk);
 }
+function mixW(hex,k){const n=parseInt(hex.slice(1),16),r=n>>16,g=(n>>8)&255,b=n&255,m=c=>Math.round(255-(255-c)*k);return`rgb(${m(r)},${m(g)},${m(b)})`;}
+const useBlocks=()=>st.mode==='all'&&Object.values(st.blocks||{}).some(Boolean);
+const blockAl=t=>t.block?(st.blocks[t.block]||''):'';
+let lastNote='';
 function autoPlace(onlyUnplaced){
   const S=seats();
   if(!onlyUnplaced)for(const k in S)delete S[k];
   const order=st.players.filter(p=>!tileOf(p.id));
-  const free=orderedTiles().filter(t=>!S[t.k]);
-  order.forEach((p,i)=>{if(free[i])S[free[i].k]=p.id;});
+  lastNote='';
+  if(useBlocks()){
+    // 同盟ごとに自分のブロックへ（強い人から早く着くタイル順）。あふれた人・ブロックの無い同盟は自由席（角）へ
+    const fast=fastTiles(),rest=[];
+    st.alliances.forEach(al=>{
+      const mine=order.filter(p=>p.al===al.id);
+      const ts=fast.filter(t=>blockAl(t)===al.id&&!S[t.k]);
+      mine.forEach((p,i)=>{if(ts[i])S[ts[i].k]=p.id;else rest.push(p);});
+    });
+    const freeSeats=fast.filter(t=>!t.block&&!S[t.k]);
+    rest.sort((x,y)=>st.players.indexOf(x)-st.players.indexOf(y));
+    let left=0;rest.forEach((p,i)=>{if(freeSeats[i])S[freeSeats[i].k]=p.id;else left++;});
+    if(rest.length)lastNote=`ブロックに入りきらない人・ブロックの無い同盟の人 ${rest.length}人を自由席（角）に入れました。`+(left?`（自由席も満席のため ${left}人は未配置）`:'');
+  }else{
+    const free=orderedTiles().filter(t=>!S[t.k]);
+    order.forEach((p,i)=>{if(free[i])S[free[i].k]=p.id;});
+  }
   armed=null;selTile=null;save();render();
 }
 function parseLine(s){
@@ -328,7 +366,12 @@ function render(){
   document.getElementById('centerWrap').style.display=st.mode==='all'?'none':'';
   document.getElementById('center').checked=st.center;
   document.getElementById('autoOrder').value=st.autoOrder||'fast';
-  renderAlliances();renderRoster();renderCtx();
+  renderAlliances();renderBlocks();renderRoster();renderCtx();
+}
+function renderBlocks(){
+  const card=document.getElementById('blockCard');card.hidden=st.mode!=='all';if(card.hidden)return;
+  document.getElementById('blocks').innerHTML=BLOCKS.map(bl=>{const v=st.blocks[bl.id]||'';const col=v?AL(v).color:'#d9dce1';
+    return `<div class="row" style="align-items:center;margin-top:4px"><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${col}"></i><span style="width:118px;font-size:13px">${bl.label}</span><select data-block="${bl.id}" style="flex:1"><option value="">（未割り当て）</option>${st.alliances.map(a=>`<option value="${a.id}"${a.id===v?' selected':''}>${esc(a.name||'―')}</option>`).join('')}</select></div>`;}).join('');
 }
 function renderAlliances(){
   document.getElementById('alliances').innerHTML=st.alliances.map(a=>{const cnt=st.players.filter(p=>p.al===a.id).length;
@@ -348,7 +391,7 @@ function renderRoster(){
 }
 function renderCtx(){
   const S=seats(), placed=st.players.filter(p=>tileOf(p.id)).length, nAct=tiles.filter(active).length;
-  const head=(st.autoOrder==='arrow'&&st.mode==='all'?'<div class="muted" style="color:#b42318">※矢印順はSVS（左側・右側）用です。国内王城戦では早く着く順で並べます。</div>':'')+`<div class="muted">${MODE_LABEL[st.mode]}　配置 ${placed}/${st.players.length}人・使えるタイル ${nAct}</div>`;
+  const head=(lastNote?'<div style="color:#b42318;font-size:12px">'+lastNote+'</div>':'')+(st.autoOrder==='arrow'&&st.mode==='all'&&!useBlocks()?'<div class="muted" style="color:#b42318">※矢印順はSVS（左側・右側）用です。国内王城戦では早く着く順で並べます。</div>':'')+`<div class="muted">${MODE_LABEL[st.mode]}　配置 ${placed}/${st.players.length}人・使えるタイル ${nAct}</div>`;
   if(armed&&P(armed)){
     const p=P(armed), sl=seatLabel(armed);
     ctx.innerHTML=head+`<div class="big">「${esc(p.name)}」を選択中</div>置きたいタイルをタップしてください。${sl?'（今：'+sl+'）人がいるタイルを選ぶと入れ替えます。':''}
@@ -419,12 +462,13 @@ alBox.addEventListener('change',e=>{const row=e.target.closest('[data-al]');if(!
 document.getElementById('addAl').addEventListener('click',()=>{const used=st.alliances.map(a=>a.color);const c=PALETTE.find(x=>!used.includes(x))||PALETTE[st.alliances.length%8];
   st.alliances.push({id:'al'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:'',color:c});save();render();});
 document.getElementById('bulkAl').addEventListener('change',e=>{bulkAl=e.target.value;});
-document.querySelectorAll('.modes button').forEach(b=>b.addEventListener('click',()=>{st.mode=b.dataset.mode;armed=null;selTile=null;save();render();}));
+document.querySelectorAll('.modes button').forEach(b=>b.addEventListener('click',()=>{lastNote='';st.mode=b.dataset.mode;armed=null;selTile=null;save();render();}));
 document.getElementById('center').addEventListener('change',e=>{st.center=e.target.checked;
   if(!st.center){const S=seats();for(const k in S)if(TM[k].d===0)delete S[k];}save();render();});
 document.getElementById('addBulk').addEventListener('click',()=>{
   const ta=document.getElementById('bulk');ta.value.split(/\n/).map(s=>s.trim()).filter(Boolean).forEach(l=>{const r=parseLine(l);if(r.name)addPlayer(r.name,r.al);});
   ta.value='';save();render();});
+document.getElementById('blocks').addEventListener('change',e=>{const id=e.target.dataset.block;if(!id)return;if(e.target.value)st.blocks[id]=e.target.value;else delete st.blocks[id];save();render();});
 document.getElementById('autoOrder').addEventListener('change',e=>{st.autoOrder=e.target.value;save();renderCtx();});
 document.getElementById('auto').addEventListener('click',()=>autoPlace(false));
 document.getElementById('autoFill').addEventListener('click',()=>autoPlace(true));
