@@ -77,7 +77,7 @@ footer{text-align:center;font-size:11px;color:var(--muted);padding:6px 0 18px}
 <li><b>自動配置</b>：メンバーの上から順（強い人順）に自動で並べます。並べ方は「早く着く順」か「矢印順（SVS用）」を選べます。国内王城戦で「ブロック割り当て」をすると、同盟ごとに自分のブロックへ並べ、入りきらない人は角の自由席へ入れます。矢印順は、北西面を内側の列から北→西へ → 西の角を太陽城に近い縦列から上→下へ → 南西面を内側の列から南→西へ、の順に埋めます（右側は左右反転）。「未配置だけ追加」は空いているタイルに追加だけします。</li>
 <li><b>手で調整</b>：メンバー（またはマップ上の人）をタップ → 移動先のタイルをタップ。人がいるタイルなら入れ替わります。空きタイルをタップすると、その場で名前を入れられます。</li>
 <li><b>共有する</b>：「画像をダウンロード」で席順画像を保存、「席順をテキストでコピー」でチャットやLINEに貼れます。</li>
-</ol><div class="muted">※タイルの数字は席順番号です。入力内容はこの端末のブラウザに自動保存されます。</div></details></div>
+</ol><div class="muted">※タイルの数字は席順番号です。紺の線の内側がレッドゾーン（1〜160番）、外側3列がグレーゾーン（161〜364番）です。入力内容はこの端末のブラウザに自動保存されます。</div></details></div>
 <div class="modes">
   <button data-mode="all">国内王城戦（全レッドゾーン）</button>
   <button data-mode="left">SVS 左側</button>
@@ -98,7 +98,7 @@ footer{text-align:center;font-size:11px;color:var(--muted);padding:6px 0 18px}
     </div>
     <div class="card" id="blockCard">
       <h2>国内王城戦のブロック割り当て</h2>
-      <p class="muted" style="margin:0 0 6px">各面を半分に分けた8ブロック（各12席）に同盟を割り当てると、一括配置で同盟ごとに自分のブロックへ並べます。角の灰色部分は自由席です。</p>
+      <p class="muted" style="margin:0 0 6px">各面を半分に分けた8ブロック（各12席）に同盟を割り当てると、一括配置で同盟ごとに自分のブロックへ並べます。角の灰色部分と外側3列のグレーゾーンは自由席です。</p>
       <div id="blocks"></div>
     </div>
     <div class="card">
@@ -132,7 +132,8 @@ footer{text-align:center;font-size:11px;color:var(--muted);padding:6px 0 18px}
 
 <script>
 (function(){
-const N=14,C0=4,C1=9,W=44,H=32,PAD=24;
+const N=20,C0=7,C1=12,W=44,H=32,PAD=24,RZ=4; // RZ=レッドゾーンの列数（外側3列はグレーゾーン）
+const OFF=C0-4; // 着弾秒数データ（14×14）とのずれ
 const PALETTE=['#c0392b','#e67e22','#d4a017','#2e7d32','#0f8b8d','#1f5fa8','#7b3fa0','#d63384'];
 const MODE_LABEL={all:'国内王城戦（全レッドゾーン）',left:'SVS（左側）',right:'SVS（右側）'};
 // 着弾秒数（画像3より）: 行 s=a+b、列 d=a-b。下半分は上下対称
@@ -145,7 +146,7 @@ const T={4:[[-2,66],[0,66],[2,66]],5:[[-5,66],[-3,58],[-1,58],[1,58],[3,58],[5,6
 11:[[-9,66],[-7,52],[-5,39],[5,39],[7,52],[9,66]],
 12:[[-8,58],[-6,43],[6,43],[8,58]],
 13:[[-9,66],[-7,50],[7,50],[9,66]]};
-function secOf(a,b){const s=a+b,d=a-b,k=Math.min(s,26-s),r=T[k];if(!r)return null;const f=r.find(x=>x[0]===d);return f?f[1]:null;}
+function secOf(a,b){a-=OFF;b-=OFF;if(a<0||b<0||a>13||b>13)return null;const s=a+b,d=a-b,k=Math.min(s,26-s),r=T[k];if(!r)return null;const f=r.find(x=>x[0]===d);return f?f[1]:null;}
 function dirOf(a,b){
   const ai=a<C0?-1:a>C1?1:0, bi=b<C0?-1:b>C1?1:0;
   if(ai<0&&bi<0)return'北';if(ai>0&&bi<0)return'東';if(ai>0&&bi>0)return'南';if(ai<0&&bi>0)return'西';
@@ -159,15 +160,16 @@ for(let a=0;a<N;a++)for(let b=0;b<N;b++){
 }
 const TM=Object.fromEntries(tiles.map(t=>[t.k,t]));
 // 国内王城戦のカラーブロック（各面を半分に分けた8ブロック・各12席。角の4×4は自由席）
+const inRZ=(a,b)=>a>=C0-RZ&&b>=C0-RZ&&a<=C1+RZ&&b<=C1+RZ;
 const BLOCKS=[
- {id:'ne-n',label:'北東面・北寄り',test:(a,b)=>b<C0&&a>=C0&&a<=C0+2},
- {id:'ne-e',label:'北東面・東寄り',test:(a,b)=>b<C0&&a>=C0+3&&a<=C1},
- {id:'se-e',label:'南東面・東寄り',test:(a,b)=>a>C1&&b>=C0&&b<=C0+2},
- {id:'se-s',label:'南東面・南寄り',test:(a,b)=>a>C1&&b>=C0+3&&b<=C1},
- {id:'sw-s',label:'南西面・南寄り',test:(a,b)=>b>C1&&a>=C0+3&&a<=C1},
- {id:'sw-w',label:'南西面・西寄り',test:(a,b)=>b>C1&&a>=C0&&a<=C0+2},
- {id:'nw-w',label:'北西面・西寄り',test:(a,b)=>a<C0&&b>=C0+3&&b<=C1},
- {id:'nw-n',label:'北西面・北寄り',test:(a,b)=>a<C0&&b>=C0&&b<=C0+2}];
+ {id:'ne-n',label:'北東面・北寄り',test:(a,b)=>inRZ(a,b)&&b<C0&&a>=C0&&a<=C0+2},
+ {id:'ne-e',label:'北東面・東寄り',test:(a,b)=>inRZ(a,b)&&b<C0&&a>=C0+3&&a<=C1},
+ {id:'se-e',label:'南東面・東寄り',test:(a,b)=>inRZ(a,b)&&a>C1&&b>=C0&&b<=C0+2},
+ {id:'se-s',label:'南東面・南寄り',test:(a,b)=>inRZ(a,b)&&a>C1&&b>=C0+3&&b<=C1},
+ {id:'sw-s',label:'南西面・南寄り',test:(a,b)=>inRZ(a,b)&&b>C1&&a>=C0+3&&a<=C1},
+ {id:'sw-w',label:'南西面・西寄り',test:(a,b)=>inRZ(a,b)&&b>C1&&a>=C0&&a<=C0+2},
+ {id:'nw-w',label:'北西面・西寄り',test:(a,b)=>inRZ(a,b)&&a<C0&&b>=C0+3&&b<=C1},
+ {id:'nw-n',label:'北西面・北寄り',test:(a,b)=>inRZ(a,b)&&a<C0&&b>=C0&&b<=C0+2}];
 tiles.forEach(t=>{const bl=BLOCKS.find(x=>x.test(t.a,t.b));t.block=bl?bl.id:null;});
 // 席順番号：太陽城に近い列から、北の角の右隣を1番として時計回り（各列の最後は北の角）
 (function(){let n=1;
@@ -186,6 +188,7 @@ try{const raw=localStorage.getItem(KEY);if(raw){const o=JSON.parse(raw);if(o&&o.
 function fixState(){
   if(!Array.isArray(st.alliances)||!st.alliances.length)st.alliances=[{id:'a1',name:'',color:PALETTE[5]}];
   if(!st.blocks||typeof st.blocks!=='object')st.blocks={};
+  if(!st.gridV){for(const m in st.seats){const o=st.seats[m],n={};for(const k in o){const [a,b]=k.split('-').map(Number);n[(a+OFF)+'-'+(b+OFF)]=o[k];}st.seats[m]=n;}st.gridV=2;}
   for(const k in st.blocks)if(!st.alliances.some(a=>a.id===st.blocks[k]))delete st.blocks[k];
   const seen=new Set();st.alliances.forEach((x,i)=>{if(seen.has(x.id))x.id='al'+i+Math.random().toString(36).slice(2,6);seen.add(x.id);});
   st.players.forEach(p=>{delete p.role;if(!st.alliances.some(a=>a.id===p.al))p.al=st.alliances[0].id;});
@@ -242,30 +245,37 @@ function nameLayout(name){
 function fit(name,max){let u=0,out='';for(const ch of name){const w=/[ -~｡-ﾟ]/.test(ch)?1:2;if(u+w>max)return out+'…';u+=w;out+=ch;}return out;}
 function heat(sec){if(sec==null)return'#dcdff5';const t=Math.max(0,Math.min(1,(sec-36)/30));
   const h=8+t*200, l=86+t*8;return`hsl(${h.toFixed(0)},75%,${l.toFixed(0)}%)`;}
+function rzOutline(){const lo=C0-RZ,hi=C1+RZ+1;return `<polygon points="${pt(lo,lo)} ${pt(hi,lo)} ${pt(hi,hi)} ${pt(lo,hi)}" fill="none" stroke="#1d3557" stroke-width="2"/>`;}
 function buildSvg(exp){
   const S=seats();let g='';
-  for(const t of tiles){
+  const rank=t=>{const pid=S[t.k],p=pid&&P(pid);if(!exp&&((p&&armed===pid)||selTile===t.k))return 2;return p&&active(t)?1:0;};
+  const drawList=tiles.slice().sort((x,y)=>rank(x)-rank(y));
+  let rzDone=false;
+  for(const t of drawList){
+    if(!rzDone&&rank(t)>0){rzDone=true;g+=rzOutline();}
     const on=active(t), pid=S[t.k], p=pid?P(pid):null;
     const poly=[pt(t.a,t.b),pt(t.a+1,t.b),pt(t.a+1,t.b+1),pt(t.a,t.b+1)].join(' ');
     const cx=vx(t.a+.5,t.b+.5), cy=vy(t.a+.5,t.b+.5);
-    let fill=on?heat(t.sec):'#e4e7eb';
+    const gz=t.ring>RZ;
+    let fill=on?(gz?'#f7f8fa':heat(t.sec)):'#e4e7eb';
     if(on&&st.mode==='all'&&useBlocks()){const ba=blockAl(t);if(ba)fill=mixW(AL(ba).color,.3);else fill=t.block?'#ffffff':'#d9dce1';}
     if(p&&on)fill=AL(p.al).color;
     const isArm=!exp&&p&&armed===pid, isSel=!exp&&selTile===t.k;
-    g+=`<g class="${on?'tile':'off'}" data-k="${t.k}"><polygon points="${poly}" fill="${fill}" stroke="${isArm||isSel?'#f2b705':'#5b6670'}" stroke-width="${isArm||isSel?3.5:0.8}" opacity="${on?1:.55}"/>`;
+    g+=`<g class="${on?'tile':'off'}" data-k="${t.k}"><polygon points="${poly}" fill="${fill}" stroke="${isArm||isSel?'#f2b705':(p&&on?'#ffffff':'#5b6670')}" stroke-width="${isArm||isSel?3.5:(p&&on?1.6:0.8)}" opacity="${on?1:.55}"/>`;
     if(p&&on){
       g+=`<title>${t.no}番 ${esc(p.name)}${AL(p.al).name?'（'+esc(AL(p.al).name)+'）':''}</title>`;
       const L=nameLayout(p.name);
       g+=`<text x="${cx}" y="${cy+L.noY}" text-anchor="middle" font-size="${L.noSize}" font-weight="700" fill="#fff" opacity=".85">${t.no}</text>`;
       L.lines.forEach(l=>{g+=`<text x="${cx}" y="${cy+l.c+L.size*0.36}" text-anchor="middle" font-size="${L.size}" font-weight="700" fill="#fff">${esc(l.t)}</text>`;});
     }else{
-      g+=`<text x="${cx}" y="${cy+4.5}" text-anchor="middle" font-size="12.5" font-weight="700" fill="${on?'#1d3557':'#9aa3ad'}">${t.no}</text>`;
+      g+=`<text x="${cx}" y="${cy+4.5}" text-anchor="middle" font-size="12.5" font-weight="700" fill="${on?(gz?'#8a94a0':'#1d3557'):'#9aa3ad'}">${t.no}</text>`;
     }
     g+='</g>';
   }
+  if(!rzDone)g+=rzOutline();
   // castle
   g+=`<polygon points="${pt(C0,C0)} ${pt(C1+1,C0)} ${pt(C1+1,C1+1)} ${pt(C0,C1+1)}" fill="#111"/>`;
-  const mx=vx(7,7), my=vy(7,7);
+  const mx=vx((C0+C1+1)/2,(C0+C1+1)/2), my=vy((C0+C1+1)/2,(C0+C1+1)/2);
   g+=`<text x="${mx}" y="${my+12}" text-anchor="middle" font-size="34" font-weight="700" fill="#fff">太陽城</text>`;
   const lab=(t,x,y)=>`<text x="${x}" y="${y}" text-anchor="middle" font-size="20" font-weight="700" fill="#fff">${t}</text>`;
   g+=lab('北',vx(C0,C0),vy(C0,C0)+34)+lab('南',vx(C1+1,C1+1),vy(C1+1,C1+1)-14)+lab('東',vx(C1+1,C0)-30,vy(C1+1,C0)+7)+lab('西',vx(C0,C1+1)+30,vy(C0,C1+1)+7);
@@ -307,8 +317,12 @@ function arrowTiles(side){
 }
 function orderedTiles(){
   if(st.autoOrder==='arrow'&&st.mode!=='all'){
-    const seq=arrowTiles(st.mode),inS=new Set(seq);
-    return seq.concat(fastTiles().filter(t=>!inS.has(t)));
+    // レッドゾーンを先に（矢印順→残り）、その後グレーゾーン（矢印順→残り）
+    const seq=arrowTiles(st.mode),fast=fastTiles(),out=[],used=new Set();
+    for(const red of [true,false]){const z=t=>(t.ring<=RZ)===red;
+      seq.filter(z).forEach(t=>{out.push(t);used.add(t);});
+      fast.filter(t=>z(t)&&!used.has(t)).forEach(t=>{out.push(t);used.add(t);});}
+    return out;
   }
   return fastTiles();
 }
